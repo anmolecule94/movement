@@ -19,9 +19,11 @@ Define regions of interest and compute the time spent in each region.
 # %%
 # Imports
 # -------
+import numpy as np
 from matplotlib import pyplot as plt
 
 from movement import sample_data
+from movement.filtering import filter_by_confidence
 from movement.plots import plot_occupancy
 
 # %%
@@ -37,6 +39,13 @@ print(f"Individuals: {ds.individuals.values}")
 print(f"Keypoints: {ds.keypoints.values}")
 
 # %%
+# Do some basic filtering
+# -----------------------
+# We will drop points with low confidence.
+
+position = filter_by_confidence(ds.position, ds.confidence, threshold=0.95)
+
+# %%
 # Plot occupancy
 # --------------
 # A quick way to get an impression about the relative time spent in
@@ -48,8 +57,32 @@ print(f"Keypoints: {ds.keypoints.values}")
 
 
 # Load the frame and plo
-frame = plt.imread(ds.frame_path)
+image = plt.imread(ds.frame_path)
+height, width, channel = image.shape
 
-plot_occupancy(
-    ds,
+# Construct bins that cover the entire image
+bin_pix = 30  # pixels
+bins = [
+    np.arange(0, width + bin_pix, bin_pix),
+    np.arange(0, height + bin_pix, bin_pix),
+]
+
+
+fig, ax = plt.subplots()
+ax.imshow(image)  # Show the image
+
+# Plot the occupancy 2D histogram for the centroid of all keypoints
+fig, ax, hist_data = plot_occupancy(
+    da=ds.position,
+    ax=ax,
+    alpha=0.8,
+    bins=bins,
+    cmin=10,  # Set the minimum shown count
+    norm="log",
 )
+
+ax.set_title("Occupancy heatmap")
+# Set the axis limits to match the image
+ax.set_xlim(0, width)
+ax.set_ylim(height, 0)
+ax.collections[0].colorbar.set_label("# frames")
